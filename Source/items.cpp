@@ -19,8 +19,8 @@
 #include "controls/plrctrls.h"
 #include "cursor.h"
 #include "doom.h"
-#include "dx.h"
 #include "engine/cel_sprite.hpp"
+#include "engine/dx.h"
 #include "engine/load_cel.hpp"
 #include "engine/random.hpp"
 #include "engine/render/cel_render.hpp"
@@ -3740,7 +3740,7 @@ bool DoOil(Player &player, int cii)
 void DrawUniqueInfo(const Surface &out)
 {
 	const Point position = GetRightPanel().position - Displacement { SidePanelSize.width, 0 };
-	if (IsLeftPanelOpen() && GetLeftPanel().Contains(position)) {
+	if (IsLeftPanelOpen() && GetLeftPanel().contains(position)) {
 		return;
 	}
 

@@ -2016,7 +2016,7 @@ bool AiPlanPath(int i)
 	return false;
 }
 
-void AiAvoidance(int i, bool special)
+void AiAvoidance(int i)
 {
 	assert(i >= 0 && i < MAXMONSTERS);
 	auto &monster = Monsters[i];
@@ -2060,7 +2060,7 @@ void AiAvoidance(int i, bool special)
 			}
 		} else if (v < 2 * monster._mint + 23) {
 			monster._mdir = md;
-			if (special && monster._mhitpoints < (monster._mmaxhp / 2) && GenerateRnd(2) != 0)
+			if (IsAnyOf(monster._mAi, AI_GOATMC, AI_GARBUD) && monster._mhitpoints < (monster._mmaxhp / 2) && GenerateRnd(2) != 0)
 				StartSpecialAttack(monster);
 			else
 				StartAttack(monster);
@@ -2070,7 +2070,42 @@ void AiAvoidance(int i, bool special)
 	monster.CheckStandAnimationIsLoaded(md);
 }
 
-void AiRanged(int i, missile_id missileType, bool special)
+missile_id GetMissileType(_mai_id ai)
+{
+	switch (ai) {
+	case AI_GOATMC:
+		return MIS_ARROW;
+	case AI_SUCC:
+		return MIS_FLARE;
+	case AI_ACID:
+	case AI_ACIDUNIQ:
+		return MIS_ACID;
+	case AI_FIREBAT:
+		return MIS_FIREBOLT;
+	case AI_TORCHANT:
+		return MIS_FIREBALL;
+	case AI_LICH:
+		return MIS_LICH;
+	case AI_ARCHLICH:
+		return MIS_ARCHLICH;
+	case AI_PSYCHORB:
+		return MIS_PSYCHORB;
+	case AI_NECROMORB:
+		return MIS_NECROMORB;
+	case AI_MAGMA:
+		return MIS_MAGMABALL;
+	case AI_STORM:
+		return MIS_LIGHTCTRL2;
+	case AI_DIABLO:
+		return MIS_DIABAPOCA;
+	case AI_BONEDEMON:
+		return MIS_BONEDEMON;
+	default:
+		return MIS_ARROW;
+	}
+}
+
+void AiRanged(int i)
 {
 	assert(i >= 0 && i < MAXMONSTERS);
 	auto &monster = Monsters[i];
@@ -2096,7 +2131,8 @@ void AiRanged(int i, missile_id missileType, bool special)
 		}
 		if (monster._mmode == MonsterMode::Stand) {
 			if (LineClearMissile(monster.position.tile, { fx, fy })) {
-				if (special)
+				missile_id missileType = GetMissileType(monster._mAi);
+				if (monster._mAi == AI_ACIDUNIQ)
 					StartRangedSpecialAttack(monster, missileType, 4);
 				else
 					StartRangedAttack(monster, missileType, 4);
@@ -2115,7 +2151,7 @@ void AiRanged(int i, missile_id missileType, bool special)
 	}
 }
 
-void AiRangedAvoidance(int i, missile_id missileType, bool checkdoors, int dam, int lessmissiles)
+void AiRangedAvoidance(int i)
 {
 	assert(i >= 0 && i < MAXMONSTERS);
 	auto &monster = Monsters[i];
@@ -2129,8 +2165,11 @@ void AiRangedAvoidance(int i, missile_id missileType, bool checkdoors, int dam, 
 	int mx = monster.position.tile.x - fx;
 	int my = monster.position.tile.y - fy;
 	Direction md = GetDirection(monster.position.tile, monster.position.last);
-	if (checkdoors && monster._msquelch < UINT8_MAX)
+	if (IsAnyOf(monster._mAi, AI_MAGMA, AI_STORM, AI_BONEDEMON) && monster._msquelch < UINT8_MAX)
 		MonstCheckDoors(monster);
+	int lessmissiles = (monster._mAi == AI_ACID) ? 1 : 0;
+	int dam = (monster._mAi == AI_DIABLO) ? 40 : 4;
+	missile_id missileType = GetMissileType(monster._mAi);
 	int v = GenerateRnd(10000);
 	int dist = std::max(abs(mx), abs(my));
 	if (dist >= 2 && monster._msquelch == UINT8_MAX && dTransVal[monster.position.tile.x][monster.position.tile.y] == dTransVal[fx][fy]) {
@@ -2460,16 +2499,6 @@ void RhinoAi(int i)
 	monster.CheckStandAnimationIsLoaded(monster._mdir);
 }
 
-void GoatAi(int i)
-{
-	AiAvoidance(i, true);
-}
-
-void GoatBowAi(int i)
-{
-	AiRanged(i, MIS_ARROW, false);
-}
-
 void FallenAi(int i)
 {
 	assert(i >= 0 && i < MAXMONSTERS);
@@ -2508,7 +2537,8 @@ void FallenAi(int i)
 			for (int x = -rad; x <= rad; x++) {
 				int xpos = monster.position.tile.x + x;
 				int ypos = monster.position.tile.y + y;
-				if (InDungeonBounds({ x, y })) {
+				// BUGFIX: incorrect check of offset against limits of the dungeon (fixed)
+				if (InDungeonBounds({ xpos, ypos })) {
 					int m = dMonster[xpos][ypos];
 					if (m <= 0)
 						continue;
@@ -2533,11 +2563,6 @@ void FallenAi(int i)
 			RandomWalk(i, GetMonsterDirection(monster));
 	} else
 		SkeletonAi(i);
-}
-
-void MagmaAi(int i)
-{
-	AiRangedAvoidance(i, MIS_MAGMABALL, true, 4, 0);
 }
 
 void LeoricAi(int i)
@@ -2692,7 +2717,7 @@ void GargoyleAi(int i)
 			monster._mgoal = MGOAL_NORMAL;
 		}
 	}
-	AiAvoidance(i, false);
+	AiAvoidance(i);
 }
 
 void ButcherAi(int i)
@@ -2718,11 +2743,6 @@ void ButcherAi(int i)
 		StartAttack(monster);
 
 	monster.CheckStandAnimationIsLoaded(md);
-}
-
-void SuccubusAi(int i)
-{
-	AiRanged(i, MIS_FLARE, false);
 }
 
 void SneakAi(int i)
@@ -2786,11 +2806,6 @@ void SneakAi(int i)
 	}
 }
 
-void StormAi(int i)
-{
-	AiRangedAvoidance(i, MIS_LIGHTCTRL2, true, 4, 0);
-}
-
 void GharbadAi(int i)
 {
 	assert(i >= 0 && i < MAXMONSTERS);
@@ -2833,19 +2848,9 @@ void GharbadAi(int i)
 	}
 
 	if (monster._mgoal == MGOAL_NORMAL || monster._mgoal == MGOAL_MOVE)
-		AiAvoidance(i, true);
+		AiAvoidance(i);
 
 	monster.CheckStandAnimationIsLoaded(md);
-}
-
-void AcidAvoidanceAi(int i)
-{
-	AiRangedAvoidance(i, MIS_ACID, false, 4, 1);
-}
-
-void AcidAi(int i)
-{
-	AiRanged(i, MIS_ACID, true);
 }
 
 void SnotSpilAi(int i)
@@ -3116,11 +3121,6 @@ void MegaAi(int i)
 	}
 }
 
-void DiabloAi(int i)
-{
-	AiRangedAvoidance(i, MIS_DIABAPOCA, false, 40, 0);
-}
-
 void LazarusAi(int i)
 {
 	assert(i >= 0 && i < MAXMONSTERS);
@@ -3190,7 +3190,7 @@ void LazarusMinionAi(int i)
 			monster._mgoal = MGOAL_NORMAL;
 	}
 	if (monster._mgoal == MGOAL_NORMAL)
-		SuccubusAi(i);
+		AiRanged(i);
 
 	monster.CheckStandAnimationIsLoaded(md);
 }
@@ -3248,16 +3248,6 @@ void WarlordAi(int i)
 		SkeletonAi(i);
 
 	monster.CheckStandAnimationIsLoaded(md);
-}
-
-void FirebatAi(int i)
-{
-	AiRanged(i, MIS_FIREBOLT, false);
-}
-
-void TorchantAi(int i)
-{
-	AiRanged(i, MIS_FIREBALL, false);
 }
 
 void HorkDemonAi(int i)
@@ -3322,31 +3312,6 @@ void HorkDemonAi(int i)
 	monster.CheckStandAnimationIsLoaded(monster._mdir);
 }
 
-void LichAi(int i)
-{
-	AiRanged(i, MIS_LICH, false);
-}
-
-void ArchLichAi(int i)
-{
-	AiRanged(i, MIS_ARCHLICH, false);
-}
-
-void PsychorbAi(int i)
-{
-	AiRanged(i, MIS_PSYCHORB, false);
-}
-
-void NecromorbAi(int i)
-{
-	AiRanged(i, MIS_NECROMORB, false);
-}
-
-void BoneDemonAi(int i)
-{
-	AiRangedAvoidance(i, MIS_BONEDEMON, true, 4, 0);
-}
-
 string_view GetMonsterTypeText(const MonsterData &monsterData)
 {
 	switch (monsterData.mMonstClass) {
@@ -3379,40 +3344,40 @@ void (*AiProc[])(int i) = {
 	/*AI_SKELBOW  */ &SkeletonBowAi,
 	/*AI_SCAV     */ &ScavengerAi,
 	/*AI_RHINO    */ &RhinoAi,
-	/*AI_GOATMC   */ &GoatAi,
-	/*AI_GOATBOW  */ &GoatBowAi,
+	/*AI_GOATMC   */ &AiAvoidance,
+	/*AI_GOATBOW  */ &AiRanged,
 	/*AI_FALLEN   */ &FallenAi,
-	/*AI_MAGMA    */ &MagmaAi,
+	/*AI_MAGMA    */ &AiRangedAvoidance,
 	/*AI_SKELKING */ &LeoricAi,
 	/*AI_BAT      */ &BatAi,
 	/*AI_GARG     */ &GargoyleAi,
 	/*AI_CLEAVER  */ &ButcherAi,
-	/*AI_SUCC     */ &SuccubusAi,
+	/*AI_SUCC     */ &AiRanged,
 	/*AI_SNEAK    */ &SneakAi,
-	/*AI_STORM    */ &StormAi,
+	/*AI_STORM    */ &AiRangedAvoidance,
 	/*AI_FIREMAN  */ nullptr,
 	/*AI_GARBUD   */ &GharbadAi,
-	/*AI_ACID     */ &AcidAvoidanceAi,
-	/*AI_ACIDUNIQ */ &AcidAi,
+	/*AI_ACID     */ &AiRangedAvoidance,
+	/*AI_ACIDUNIQ */ &AiRanged,
 	/*AI_GOLUM    */ &GolumAi,
 	/*AI_ZHAR     */ &ZharAi,
 	/*AI_SNOTSPIL */ &SnotSpilAi,
 	/*AI_SNAKE    */ &SnakeAi,
 	/*AI_COUNSLR  */ &CounselorAi,
 	/*AI_MEGA     */ &MegaAi,
-	/*AI_DIABLO   */ &DiabloAi,
+	/*AI_DIABLO   */ &AiRangedAvoidance,
 	/*AI_LAZARUS  */ &LazarusAi,
 	/*AI_LAZHELP  */ &LazarusMinionAi,
 	/*AI_LACHDAN  */ &LachdananAi,
 	/*AI_WARLORD  */ &WarlordAi,
-	/*AI_FIREBAT  */ &FirebatAi,
-	/*AI_TORCHANT */ &TorchantAi,
+	/*AI_FIREBAT  */ &AiRanged,
+	/*AI_TORCHANT */ &AiRanged,
 	/*AI_HORKDMN  */ &HorkDemonAi,
-	/*AI_LICH     */ &LichAi,
-	/*AI_ARCHLICH */ &ArchLichAi,
-	/*AI_PSYCHORB */ &PsychorbAi,
-	/*AI_NECROMORB*/ &NecromorbAi,
-	/*AI_BONEDEMON*/ &BoneDemonAi
+	/*AI_LICH     */ &AiRanged,
+	/*AI_ARCHLICH */ &AiRanged,
+	/*AI_PSYCHORB */ &AiRanged,
+	/*AI_NECROMORB*/ &AiRanged,
+	/*AI_BONEDEMON*/ &AiRangedAvoidance
 };
 
 bool IsRelativeMoveOK(const Monster &monster, Point position, Direction mdir)

@@ -24,13 +24,14 @@
 #include "diablo.h"
 #include "discord/discord.h"
 #include "doom.h"
-#include "dx.h"
 #include "encrypt.h"
 #include "engine/cel_sprite.hpp"
 #include "engine/demomode.h"
+#include "engine/dx.h"
 #include "engine/load_cel.hpp"
 #include "engine/load_file.hpp"
 #include "engine/random.hpp"
+#include "engine/sound.h"
 #include "error.h"
 #include "gamemenu.h"
 #include "gmenu.h"
@@ -67,7 +68,6 @@
 #include "qol/stash.h"
 #include "qol/xpbar.h"
 #include "restrict.h"
-#include "sound.h"
 #include "stores.h"
 #include "storm/storm_net.hpp"
 #include "storm/storm_svid.h"
@@ -218,7 +218,7 @@ void LeftMouseCmd(bool bShift)
 {
 	bool bNear;
 
-	assert(!GetMainPanel().Contains(MousePosition));
+	assert(!GetMainPanel().contains(MousePosition));
 
 	if (leveltype == DTYPE_TOWN) {
 		CloseGoldWithdraw();
@@ -322,23 +322,23 @@ void LeftMouseDown(int wParam)
 	bool isShiftHeld = (wParam & DVL_MK_SHIFT) != 0;
 	bool isCtrlHeld = (wParam & DVL_MK_CTRL) != 0;
 
-	if (!GetMainPanel().Contains(MousePosition)) {
+	if (!GetMainPanel().contains(MousePosition)) {
 		if (!gmenu_is_active() && !TryIconCurs()) {
-			if (QuestLogIsOpen && GetLeftPanel().Contains(MousePosition)) {
+			if (QuestLogIsOpen && GetLeftPanel().contains(MousePosition)) {
 				QuestlogESC();
 			} else if (qtextflag) {
 				qtextflag = false;
 				stream_stop();
-			} else if (chrflag && GetLeftPanel().Contains(MousePosition)) {
+			} else if (chrflag && GetLeftPanel().contains(MousePosition)) {
 				CheckChrBtns();
-			} else if (invflag && GetRightPanel().Contains(MousePosition)) {
+			} else if (invflag && GetRightPanel().contains(MousePosition)) {
 				if (!dropGoldFlag)
 					CheckInvItem(isShiftHeld, isCtrlHeld);
-			} else if (IsStashOpen && GetLeftPanel().Contains(MousePosition)) {
+			} else if (IsStashOpen && GetLeftPanel().contains(MousePosition)) {
 				if (!IsWithdrawGoldOpen)
 					CheckStashItem(MousePosition, isShiftHeld, isCtrlHeld);
 				CheckStashButtonPress(MousePosition);
-			} else if (sbookflag && GetRightPanel().Contains(MousePosition)) {
+			} else if (sbookflag && GetRightPanel().contains(MousePosition)) {
 				CheckSBook();
 			} else if (!MyPlayer->HoldItem.isEmpty()) {
 				Point currentPosition = MyPlayer->position.tile;
@@ -396,7 +396,7 @@ void RightMouseDown(bool isShiftHeld)
 		SetSpell();
 		return;
 	}
-	if (sbookflag && GetRightPanel().Contains(MousePosition))
+	if (sbookflag && GetRightPanel().contains(MousePosition))
 		return;
 	if (TryIconCurs())
 		return;
